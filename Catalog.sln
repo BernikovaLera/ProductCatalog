@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Catalog", "Catalog\Catalog.csproj", "{1F6932E8-017D-408F-93E5-9D069A4DC971}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Catalog.Data", "Catalog.Data\Catalog.Data.csproj", "{0A970162-F93F-4C8A-A75B-E93B5258DCDC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{1F6932E8-017D-408F-93E5-9D069A4DC971}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1F6932E8-017D-408F-93E5-9D069A4DC971}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1F6932E8-017D-408F-93E5-9D069A4DC971}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A970162-F93F-4C8A-A75B-E93B5258DCDC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A970162-F93F-4C8A-A75B-E93B5258DCDC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A970162-F93F-4C8A-A75B-E93B5258DCDC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A970162-F93F-4C8A-A75B-E93B5258DCDC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
