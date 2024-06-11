@@ -2,11 +2,18 @@
 
 public class PriceDto
 {
-    public Guid PriceId { get; set;}
+    /// <summary>
+    /// Дата начала действия цены.
+    /// </summary>
     public DateTime StartDate { get; set; }
+
+    /// <summary>
+    /// Дата окончания действия цены.
+    /// </summary>
     public DateTime EndDate { get; set; }
+
+    /// <summary>
+    /// Цена.
+    /// </summary>
     public decimal Price { get; set; }
-    
-    public Guid ArticleId { get; set; }
-    
 }

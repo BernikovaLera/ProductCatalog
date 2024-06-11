@@ -4,9 +4,21 @@ namespace Catalog.Models.Dto;
 
 public class ArticleDto
 {
-    public Guid ArticleId { get; set; }
-    public string ArticleNumber { get; set; }
-    public DateTime UpdatedAt  { get; set; }
-    
+    /// <summary>
+    /// Наименование товара
+    /// </summary>
+    [Required]
+    public string ArticleName { get; set; }
 
+    /// <summary>
+    /// Номер артикула
+    /// </summary>
+    [Required]
+    public string ArticleNumber { get; set; }
+
+    /// <summary>
+    /// Идентификатор ProductType
+    /// </summary>
+    [Required]
+    public Guid ProductTypeId { get; set; }
 }
