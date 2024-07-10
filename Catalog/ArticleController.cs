@@ -1,7 +1,11 @@
 ﻿using Catalog.Data;
 using Catalog.Models.Dto;
+using Catalog.Models.Dto.Responses;
+using Catalog.Web;
+using Jobs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 
 namespace Catalog;
 
@@ -10,35 +14,81 @@ namespace Catalog;
 public class ArticleController(ApplicationContext db) : ControllerBase
 {
     [HttpGet("{articleId:guid}")]
-    public async Task<IActionResult> GetArticleById(Guid articleId)
+    public async Task<IActionResult> GetArticleById(Guid articleId, Cache articleService)
     {
         // При чтении по идентификатору артикула выводим только артикулы.
-        Article article = await db.Articles.FirstOrDefaultAsync(p => p.ArticleId == articleId);
-        if (article == null) return NotFound(new { message = "Информация о товаре не найден" });
-        return Ok(new { article.ArticleNumber, message = "Товар найден" });
+        ArticleResponseDto responseDto = await articleService.GetArticleByIdFromCacheOrDatabase(articleId, async (id) =>
+        {
+            Article article = await db.Articles.Include(inc => inc.ProductType).FirstOrDefaultAsync(p => p.ArticleId == id);
+            if (article == null) return null; 
+            return new ArticleResponseDto
+            {
+                ArticleNumber = article.ArticleNumber,
+                ArticleName = article.ArticleName,
+                ProductType = article.ProductType.TypeName
+            };
+        });
+        if (responseDto == null)
+        {
+            return NotFound(new { message = "Информация о товаре не найдена" });
+        }
+        return Ok(responseDto);
     }
-
-    [HttpGet("{articleNumber}/{date}")]
-    public async Task<IActionResult> GetArticlePriceByDate(string articleNumber, DateTime date)
+    
+    [HttpGet("{articleId:guid}/{date}")]
+    public async Task<IActionResult> GetArticlePriceByDate(Guid articleId, DateTime date, Cache articleService)
     {
         // При чтении по номеру артикула и дате выводим информацию о цене артикула на эту дату.
-        Price price = await db.Prices.FirstOrDefaultAsync(p =>
-            p.Article.ArticleNumber == articleNumber && p.StartDate <= date && p.EndDate >= date);
-        if (price == null) return NotFound(new { message = "Информация о цене не найдена" });
-        return Ok(price.Cost);
+        ArticleResponseDto articleResponseDto = await articleService.GetArticlePriceByDateFromCacheOrDatabase(articleId, async _ =>
+        {
+            Price price = await db.Prices.Include(inc => inc.Article).FirstOrDefaultAsync(p => p.ArticleId == articleId && p.StartDate <= date && p.EndDate >= date);
+            if (price == null) return null; 
+            return new ArticleResponseDto
+            {
+                ArticleNumber = price.Article.ArticleNumber,
+                ArticleName = price.Article.ArticleName
+            };
+        });
+        if (articleResponseDto == null)
+        {
+            return NotFound(new { message = "Информация о цене на эту дату не найдена" });
+        }
+        Price price = await db.Prices.Include(inc => inc.Article).FirstOrDefaultAsync(p => p.ArticleId == articleId && p.StartDate <= date && p.EndDate >= date);
+        PriceResponseDto priceResponseDto = new()
+        {
+            Price = price.Cost,
+            StartDate = price.StartDate,
+            EndDate = price.EndDate
+        };
+        return Ok(new { articleResponseDto, priceResponseDto });
     }
 
-    [HttpGet("{articleNumber}/prices")]
-    public async Task<IActionResult> GetAllArticlePrices(string articleNumber)
+    [HttpGet("{articleId:guid}/prices")]
+    public async Task<IActionResult> GetAllArticlePrices(Guid articleId, Cache articleService)
     {
         // Чтение всех цен с периодами действия по артикулу.
-        Price price = await db.Prices.FirstOrDefaultAsync(p => p.Article.ArticleNumber == articleNumber);
-        if (price == null) return NotFound(new { message = "Информация не найдена" });
-        return Ok(new { price.Cost, price.StartDate, price.EndDate });
+        ArticleResponseDto articleResponseDto = await articleService.GetAllArticlePricesFromCacheOrDatabase(articleId, async (id) =>
+        {
+            Price price = await db.Prices.Include(inc => inc.Article).FirstOrDefaultAsync(p => p.ArticleId == id);
+            if (price == null) return null; 
+            return new ArticleResponseDto
+            {
+                ArticleNumber = price.Article.ArticleNumber,
+                ArticleName = price.Article.ArticleName,
+            };
+        });
+        if (articleResponseDto == null)
+        {
+            return NotFound(new { message = "Информация о цене не найдена" });
+        }
+        var prices = await db.Prices.Where(p => p.ArticleId == articleId).Select(p => new { p.Cost, p.StartDate, p.EndDate }).ToListAsync();
+        return Ok(new { articleResponseDto, prices });
     }
+            
+
 
     [HttpPost("{articleId:guid}")]
-    public async Task<IActionResult> AddOrUpdateArticle(Guid articleId, [FromBody] ArticleDto articleDto)
+    public async Task<IActionResult> AddOrUpdateArticle(Guid articleId, [FromBody] ArticleDto articleDto, Cache articleService)
     {
         // При вставке/обновлении нужно заполнять поля UpdatedAt.
         Article dbArticle = await db.Articles.FirstOrDefaultAsync(p => p.ArticleId == articleId);
@@ -57,7 +107,7 @@ public class ArticleController(ApplicationContext db) : ControllerBase
             dbArticle.ProductTypeId = articleDto.ProductTypeId;
             
 
-            dbArticle.UpdatedAt = DateTime.Now;
+            dbArticle.UpdatedAt = DateTime.UtcNow;
 
             await db.SaveChangesAsync();
             return Ok(new {  articleDto, message = "Артикул обновлен" });
@@ -69,10 +119,12 @@ public class ArticleController(ApplicationContext db) : ControllerBase
             ArticleName = articleDto.ArticleName,
             ProductTypeId = articleDto.ProductTypeId,
             CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
         db.Articles.Add(dbArticle);
         await db.SaveChangesAsync();
+        
         return Ok(new { dbArticle, message = "Артикул добавлен" });
     }
 
@@ -107,8 +159,8 @@ public class ArticleController(ApplicationContext db) : ControllerBase
             EndDate = newPrice.EndDate,
             Cost = newPrice.Price,
             ArticleId = article.ArticleId,
-            CreatedAt = DateTime.Now,
-            UpdatedAt = DateTime.Now,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow, // ?
             IsDeleted = false
         };
 
@@ -145,23 +197,29 @@ public class ArticleController(ApplicationContext db) : ControllerBase
     }
 
 
+
     [HttpDelete("{articleId:guid}")]
-    public async Task<IActionResult> SoftDeleteArticle(Guid articleId)
+    public async Task<IActionResult> SoftDeleteArticle(Guid articleId, Cache articleService)
     {
         // Используется «мягкое» удаление, т.е. строка из БД не удаляется, а ставится пометка IsDeleted = true.
         Article article = await db.Articles.FirstOrDefaultAsync(p => p.ArticleId == articleId);
         if (article == null) return NotFound(new { message = "Информация об удалении товаре не найден" });
+        if (article.IsDeleted)
+        {
+            return Ok(new { message = "Полное удаление из базы данных" });
+        }
         article.IsDeleted = true;
+        article.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return Ok(new { message = "Товар удален" });
     }
+
 
     [HttpDelete("delete/{articleId:guid}")]
     public async Task<IActionResult> DeleteArticleWithPrices(Guid articleId)
     {
         // При удалении артикулов удаляются и цены.
-        Article article = await db.Articles.Include(p => p.Prices)
-            .FirstOrDefaultAsync(p => p.ArticleId == articleId && !p.IsDeleted);
+        Article article = await db.Articles.Include(p => p.Prices).FirstOrDefaultAsync(p => p.ArticleId == articleId && !p.IsDeleted);
         if (article == null) return NotFound(new { message = "Информация о товаре не найден" });
         article.IsDeleted = true;
         article.UpdatedAt = DateTime.UtcNow;
@@ -179,27 +237,19 @@ public class ArticleController(ApplicationContext db) : ControllerBase
     public async Task<IActionResult> DeletePrice(Guid priceId)
     {
         // При удалении цен следует проверить, разрывала ли эта цена другие периоды. Если разрывала, то вновь соединить их.
-        Price price = await db.Prices.Include(p => p.Article)
-            .FirstOrDefaultAsync(p => p.PriceId == priceId && !p.IsDeleted);
+        Price price = await db.Prices.Include(p => p.Article).FirstOrDefaultAsync(p => p.PriceId == priceId && !p.IsDeleted);
         if (price == null) return NotFound(new { message = "Информация о товаре не найден" });
 
-        List<Price> overlappingPrices = await db.Prices
-            .Where(p => p.ArticleId == price.ArticleId && p.PriceId != price.PriceId && p.StartDate <= price.EndDate &&
-                        p.EndDate >= price.StartDate && !p.IsDeleted)
-            .ToListAsync();
-
-        foreach (Price overlappingPrice in overlappingPrices)
+        List<Price> previousDate = await db.Prices.Where(p => p.ArticleId == price.ArticleId && 
+                                                              (p.StartDate <= price.StartDate && p.StartDate <= price.EndDate)  
+                                                              || (p.StartDate >= price.StartDate && p.StartDate >= price.EndDate) && !p.IsDeleted).ToListAsync();
+        foreach (Price currentDate in previousDate)
         {
-            if (overlappingPrice.StartDate > price.EndDate)
+            if (currentDate.EndDate < price.StartDate)
             {
-                overlappingPrice.StartDate = price.EndDate.AddDays(1);
+                currentDate.EndDate = price.EndDate;
             }
-            else if (overlappingPrice.EndDate < price.StartDate)
-            {
-                overlappingPrice.EndDate = price.StartDate.AddDays(-1);
-            }
-
-            overlappingPrice.UpdatedAt = DateTime.UtcNow;
+            currentDate.UpdatedAt = DateTime.UtcNow;
         }
 
         price.IsDeleted = true;

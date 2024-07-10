@@ -15,6 +15,7 @@ public class ApplicationContext : DbContext
         
     }
 
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -26,6 +27,7 @@ public class ApplicationContext : DbContext
             eb.Property(p => p.ArticleName).IsRequired();
             eb.Property(p => p.ArticleNumber).IsRequired();
             eb.Property(p => p.ProductTypeId).IsRequired();
+            eb.Property(p => p.CreatedAt).IsRequired();
             
             eb.HasMany(d => d.Prices)
                 .WithOne(n => n.Article)
@@ -41,6 +43,7 @@ public class ApplicationContext : DbContext
             eb.Property(p => p.StartDate).IsRequired();
             eb.Property(p => p.EndDate).IsRequired();
             eb.Property(p => p.Cost).IsRequired();
+            eb.Property(p => p.CreatedAt).IsRequired();
             
         });
         

@@ -9,6 +9,10 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.4"/>
+        <PackageReference Include="Microsoft.AspNetCore.Session" Version="2.2.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.6" />
+        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.6" />
+        <PackageReference Include="StackExchange.Redis" Version="2.7.33" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0"/>
     </ItemGroup>
 
@@ -23,7 +27,9 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Catalog.Data\Catalog.Data.csproj" />
+      <ProjectReference Include="..\Catalog.Quartz\Catalog.Quartz.csproj" />
       <ProjectReference Include="..\Catalog.Models.Dto\Catalog.Models.Dto.csproj" />
+      <ProjectReference Include="..\Catalog.Web\Catalog.Web.csproj" />
     </ItemGroup>
 
 </Project>
