@@ -1,29 +1,44 @@
-﻿using Catalog.Data;
+﻿using Quartz;
+using Catalog.Data;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using Quartz;
 
 namespace Jobs;
 
 public class QuartzApp : IJob
 {
-    private readonly ApplicationContext _dbContext;
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly ILogger<QuartzApp> _logger;
 
-    public QuartzApp(ApplicationContext dbContext, IServiceScopeFactory serviceScopeFactory)
+    public QuartzApp(IServiceScopeFactory serviceScopeFactory, ILogger<QuartzApp> logger)
     {
-        _dbContext = dbContext;
         _serviceScopeFactory = serviceScopeFactory;
+        _logger = logger;
     }
+
     public async Task Execute(IJobExecutionContext context)
     {
-        using var scope = _serviceScopeFactory.CreateScope();
-        var service = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-    
-        var softDeletedRecords =  _dbContext.Articles.Where(e => e.IsDeleted && e.UpdatedAt < DateTime.UtcNow.AddDays(-5)).ToList();
-        foreach (var softDeletedRecord in softDeletedRecords) _dbContext.Articles.Remove(softDeletedRecord);
-        await _dbContext.SaveChangesAsync();
-    
-        Console.WriteLine("Выолнение задания...");
-        
+        try
+        {
+            _logger.LogInformation("Start Job operation");
+
+            using var scope = _serviceScopeFactory.CreateScope();
+            await using ApplicationContext dbContext = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
+
+            var softDeletedRecords = dbContext.Articles
+                .Where(e => e.IsDeleted && e.UpdatedAt < DateTime.UtcNow.AddDays(-5))
+                .ToList();
+            foreach (var softDeletedRecord in softDeletedRecords) dbContext.Articles.Remove(softDeletedRecord);
+            await dbContext.SaveChangesAsync();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e.Message, e);
+            throw;
+        }
+        finally
+        {
+            _logger.LogInformation("Finished Job operation");
+        }
     }
 }

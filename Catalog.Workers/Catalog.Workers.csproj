@@ -7,11 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Catalog.Data\Catalog.Data.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <PackageReference Include="Quartz" Version="3.10.0" />
+      <ProjectReference Include="..\Catalog.Quartz\Catalog.Quartz.csproj" />
     </ItemGroup>
 
 </Project>

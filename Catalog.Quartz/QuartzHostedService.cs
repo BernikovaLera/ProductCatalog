@@ -1,21 +1,19 @@
-﻿using Microsoft.Extensions.Hosting;
-using Quartz;
-using Quartz.Impl;
+﻿using Quartz;
 using Quartz.Spi;
+using Microsoft.Extensions.Hosting;
 
 namespace Jobs;
 
-public class PeriodicTask : IHostedService
+public class QuartzHostedService : IHostedService
 {
     private readonly ISchedulerFactory _schedulerFactory;
     private readonly IJobFactory _jobFactory;
 
-    public PeriodicTask(ISchedulerFactory schedulerFactory, IJobFactory jobFactory, IScheduler scheduler)
+    public QuartzHostedService(ISchedulerFactory schedulerFactory, IJobFactory jobFactory)
     {
         _schedulerFactory = schedulerFactory;
         _jobFactory = jobFactory;
-        Scheduler = scheduler;
-    }
+       }
 
     private IScheduler Scheduler { get; set; }
 
@@ -32,7 +30,7 @@ public class PeriodicTask : IHostedService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (Scheduler != null) await Scheduler?.Shutdown(cancellationToken)!;
+        await Scheduler.Shutdown(cancellationToken);
     }
 
     private ITrigger ConfirmByGlobus()
