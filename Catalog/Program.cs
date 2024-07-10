@@ -29,11 +29,10 @@ builder.Services.AddStackExchangeRedisCache(options => {
     options.InstanceName = "local";
 });
 
-builder.Services.AddHostedService<PeriodicTask>();
-
+// Add Quartz services
 builder.Services.AddSingleton<ISchedulerFactory, StdSchedulerFactory>();
 builder.Services.AddSingleton<IJobFactory, SingletonJobFactory>();
-
+builder.Services.AddHostedService<QuartzHostedService>();
 builder.Services.AddTransient<QuartzApp>();
 
 
