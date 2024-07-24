@@ -1,18 +1,25 @@
 ﻿using Catalog.Data;
 using Catalog.Models.Dto;
 using Catalog.Models.Dto.Responses;
+using Catalog.Rabbit;
 using Catalog.Web;
-using Jobs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
+//using Catalog.RabbitMQ;
 
 namespace Catalog;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ArticleController(ApplicationContext db) : ControllerBase
+public class ArticleController(ApplicationContext db, IRabbitMqService mqService) : ControllerBase
 {
+    // private readonly IRabbitMqService _mqService;
+    //
+    // public ArticleController(IRabbitMqService mqService)
+    // {
+    //     _mqService = mqService;
+    // }
+    
     [HttpGet("{articleId:guid}")]
     public async Task<IActionResult> GetArticleById(Guid articleId, Cache articleService)
     {
@@ -32,6 +39,8 @@ public class ArticleController(ApplicationContext db) : ControllerBase
         {
             return NotFound(new { message = "Информация о товаре не найдена" });
         }
+        
+        mqService.SendMessage(message:"");
         return Ok(responseDto);
     }
     
@@ -98,18 +107,14 @@ public class ArticleController(ApplicationContext db) : ControllerBase
             {
                 dbArticle.ArticleNumber = articleDto.ArticleNumber;
             }
-
             if (!string.IsNullOrWhiteSpace(articleDto.ArticleName))
             {
                 dbArticle.ArticleName = articleDto.ArticleName;
             }
-            
             dbArticle.ProductTypeId = articleDto.ProductTypeId;
-            
-
             dbArticle.UpdatedAt = DateTime.UtcNow;
-
             await db.SaveChangesAsync();
+            
             return Ok(new {  articleDto, message = "Артикул обновлен" });
         }
 
@@ -121,9 +126,10 @@ public class ArticleController(ApplicationContext db) : ControllerBase
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-
         db.Articles.Add(dbArticle);
         await db.SaveChangesAsync();
+        
+        
         
         return Ok(new { dbArticle, message = "Артикул добавлен" });
     }
@@ -147,6 +153,7 @@ public class ArticleController(ApplicationContext db) : ControllerBase
     [HttpPut("{articleNumber}/new-prices")]
     public async Task<IActionResult> AddOrUpdateArticlePrices(string articleNumber, [FromBody] PriceDto newPrice)
     {
+        // При обновлении цен проверяем наличие артикула в БД и пересечения с другими ценами. 
         var article = await db.Articles.Include(p => p.Prices)
             .FirstOrDefaultAsync(p => p.ArticleNumber == articleNumber);
     
@@ -191,8 +198,8 @@ public class ArticleController(ApplicationContext db) : ControllerBase
 
         // Добавояем новую цену за указанный период.
         db.Prices.Add(newPriceEntity);
-
         await db.SaveChangesAsync();
+        
         return Ok(new { newPrice, message = "Информация об обновлении цены найдена" });
     }
 
@@ -213,8 +220,7 @@ public class ArticleController(ApplicationContext db) : ControllerBase
         await db.SaveChangesAsync();
         return Ok(new { message = "Товар удален" });
     }
-
-
+    
     [HttpDelete("delete/{articleId:guid}")]
     public async Task<IActionResult> DeleteArticleWithPrices(Guid articleId)
     {

@@ -1,12 +1,14 @@
 using System.Text.Json.Serialization;
 using Catalog.Data;
+using Catalog.Rabbit;
 using Catalog.Web;
 using Jobs;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 using Quartz.Impl;
 using Quartz.Spi;
-
+//using RabbitMQ.Client;
+//using Catalog.RabbitWMQ;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,6 +37,8 @@ builder.Services.AddSingleton<IJobFactory, SingletonJobFactory>();
 builder.Services.AddHostedService<QuartzHostedService>();
 builder.Services.AddTransient<QuartzApp>();
 
+// Add Rabbit services
+builder.Services.AddScoped<IRabbitMqService, RabbitMqService>();
 
 var app = builder.Build();
 
