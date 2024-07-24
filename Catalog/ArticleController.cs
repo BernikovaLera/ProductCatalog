@@ -5,7 +5,6 @@ using Catalog.Rabbit;
 using Catalog.Web;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-//using Catalog.RabbitMQ;
 
 namespace Catalog;
 
@@ -13,13 +12,6 @@ namespace Catalog;
 [Route("api/[controller]")]
 public class ArticleController(ApplicationContext db, IRabbitMqService mqService) : ControllerBase
 {
-    // private readonly IRabbitMqService _mqService;
-    //
-    // public ArticleController(IRabbitMqService mqService)
-    // {
-    //     _mqService = mqService;
-    // }
-    
     [HttpGet("{articleId:guid}")]
     public async Task<IActionResult> GetArticleById(Guid articleId, Cache articleService)
     {
@@ -39,8 +31,9 @@ public class ArticleController(ApplicationContext db, IRabbitMqService mqService
         {
             return NotFound(new { message = "Информация о товаре не найдена" });
         }
-        
-        mqService.SendMessage(message:"");
+        mqService.SendMessage(message:$"ArticleName: {responseDto.ArticleName}, " +
+                                      $"ArticleNumber: {responseDto.ArticleNumber}, " +
+                                      $"ProductType: {responseDto.ProductType}, "); 
         return Ok(responseDto);
     }
     
@@ -199,6 +192,10 @@ public class ArticleController(ApplicationContext db, IRabbitMqService mqService
         // Добавояем новую цену за указанный период.
         db.Prices.Add(newPriceEntity);
         await db.SaveChangesAsync();
+        
+        mqService.SendMessage(message:$"Price: {newPrice.Price}, " +
+                                      $"StartDate: {newPrice.StartDate}, " +
+                                      $"EndDate: {newPrice.EndDate}, "); 
         
         return Ok(new { newPrice, message = "Информация об обновлении цены найдена" });
     }
