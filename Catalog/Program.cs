@@ -2,13 +2,13 @@ using System.Text.Json.Serialization;
 using Catalog.Data;
 using Catalog.Rabbit;
 using Catalog.Web;
+using EasyNetQ;
 using Jobs;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 using Quartz.Impl;
 using Quartz.Spi;
-//using RabbitMQ.Client;
-//using Catalog.RabbitWMQ;
+using WorkerPrice;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +39,10 @@ builder.Services.AddTransient<QuartzApp>();
 
 // Add Rabbit services
 builder.Services.AddScoped<IRabbitMqService, RabbitMqService>();
+
+// Добавление EasyNetQ
+builder.Services.AddSingleton<IBus>(RabbitHutch.CreateBus("host=localhost"));
+builder.Services.AddTransient<Worker>();
 
 var app = builder.Build();
 
